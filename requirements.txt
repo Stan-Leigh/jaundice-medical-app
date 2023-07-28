@@ -1,0 +1,5 @@
+streamlit==1.13.0
+openai==0.27.8
+pandas==1.2.4
+gspread-pandas==3.2.2
+google-oauth2-tool==0.0.3
