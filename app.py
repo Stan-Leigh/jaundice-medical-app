@@ -1,6 +1,9 @@
 import streamlit as st
 import openai
+import cv2 as cv
+import numpy as np
 import pandas as pd
+from PIL import Image
 from datetime import datetime
 from gspread_pandas import Spread, Client
 from google.oauth2 import service_account
@@ -113,7 +116,11 @@ st.write("""
         If you notice that your baby's urine is dark yellow or orange, 
         it could be an indication of increased bilirubin levels in the blood.
 """)
-ut = st.radio("Is the baby's urine color dark yellow or orange?", ("No", "Yes"))
+urine_intensity = st.slider('What is the intensity of the color of the urine?', 0, 100, 0, 20)
+hex_values = ['#fff064', '#ffde1a', '#ffce00', '#ffa700', '#ff8d00', '#ff7400']
+color_hex = int(urine_intensity / 20)
+color = st.color_picker('Color intensity', hex_values[color_hex])
+ut = "No" if color_hex < 3 else "Yes"
 
 st.subheader("3. Stool color")
 st.write("""
@@ -151,7 +158,11 @@ st.sidebar.selectbox('Registered Usernames', usernames)
 
 
 st.sidebar.write("## RECOMMENDATION")
-# Logic for everything
+good = "All good. No signs of jaundice."
+medium = "Watch your baby for more symptoms. No serious issue yet."
+bad = "See a medical professional immediately! Your baby might be suffering from jaundice."
+
+# Logic
 def recommendation(sbt, ut, sc, dwf, hpc):
     strike = 0
 
@@ -167,11 +178,11 @@ def recommendation(sbt, ut, sc, dwf, hpc):
         strike += 1  
 
     if strike > 2:
-        st.sidebar.write("See a medical professional immediately! Your baby might be suffering from jaundice.")
+        st.sidebar.write(bad)
     elif strike > 0:
-        st.sidebar.write("Watch your baby for more symptoms. No serious issue yet.")
+        st.sidebar.write(medium)
     else:
-        st.sidebar.write("All good. No signs of jaundice.") 
+        st.sidebar.write(good) 
 
 
 # Create button to confirm write operation to the dataframe
@@ -187,6 +198,74 @@ if st.button("Press this button to confirm all answers"):
     # Show recommendation on the sidebar
     recommendation(sbt, ut, sc, dwf, hpc)
     st.write(df[df['users'].str.contains(user)])
+
+
+# Computer vision to detect Jaundice
+st.header("Extra precaution")
+st.write("""Jaundice may go unnoticed for a while if not carefully monitored. In this section, upload a photo of your baby so we can
+         determine if there's a likelihood that the baby has Jaundice on the skin.
+         """)
+st.write("""#### Instructions""")
+st.write("1. Upload a photo of your baby that shows the area of the body you want to scan.")
+st.write("2. Ensure that the area of the skin you want to scan covers 80% of the whole image")
+st.write("3. If unsure of which part of the body to scan, you could do them separately (for example, face first, chest area next then legs and feet).")
+
+# code part starts
+st.write("""## Choose image input method""")
+options = ['Camera', 'Upload']
+option = st.radio('Method', options, index=1)
+
+img = None
+
+if option == "Upload":
+    uploaded_file = st.file_uploader("Upload your image in .jpg format", type=["jpg"])
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        img_array = np.array(image)
+        cv.imwrite('output.jpg', cv.cvtColor(img_array, cv.COLOR_RGB2BGR))
+
+        img = cv.imread('output.jpg')
+    else:
+        st.write("Please upload an image of the baby you want to scan.")
+elif option == 'Camera':
+    image = st.camera_input('Capture Image', key='FirstCamera', 
+                            help="""This is a basic camera that takes a photo to scan whether a baby has Jaundice. 
+                                    Don\'t forget to allow access in order for the app to be able to use the devices camera.""")
+    if image is not None:
+        bytes_data = image.getvalue()
+        img = cv.imdecode(np.frombuffer(bytes_data, np.uint8), cv.IMREAD_COLOR)
+    else:
+        st.write("Please take a snapshot of the baby you want to scan.")
+
+# After getting the image, run the computer vision code to scan for Jaundice
+if img is not None:
+    # Constants for finding range of skin color in YCrCb
+    min_YCrCb = np.array([0,130,100], np.uint8)
+    max_YCrCb = np.array([255,180,130], np.uint8)
+
+    # Convert image to YCrCb
+    imageYCrCb = cv.cvtColor(img, cv.COLOR_BGR2YCR_CB)
+    cv.imshow('camera_ouput ycrcb', imageYCrCb)
+
+    # Find region with skin tone in YCrCb image
+    skinRegion = cv.inRange(imageYCrCb, min_YCrCb, max_YCrCb)
+
+    # Get how much parts of the image are shaded
+    # Calculate the total number of pixels in the mask
+    total_pixels = skinRegion.size
+
+    # Calculate the number of black pixels (pixels outside the color range)
+    black_pixels = np.sum(skinRegion == 0)
+
+    # Calculate the proportion of black shading
+    black_shading_proportion = black_pixels / total_pixels
+
+    if black_shading_proportion > 0.6:
+        st.sidebar.write(bad)
+    elif black_shading_proportion > 0.4:
+        st.sidebar.write(medium)
+    else:
+        st.sidebar.write(good) 
 
 
 # Integrating openai
