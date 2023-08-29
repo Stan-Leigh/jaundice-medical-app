@@ -245,7 +245,6 @@ if img is not None:
 
     # Convert image to YCrCb
     imageYCrCb = cv.cvtColor(img, cv.COLOR_BGR2YCR_CB)
-    cv.imshow('camera_ouput ycrcb', imageYCrCb)
 
     # Find region with skin tone in YCrCb image
     skinRegion = cv.inRange(imageYCrCb, min_YCrCb, max_YCrCb)
