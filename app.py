@@ -376,16 +376,16 @@ if eye_images is not None:
     average_black_proportion = total_black_proportion / 2
     if average_black_proportion > 0.4:
         st.sidebar.write(bad)
-        st.sidebar.write(average_black_proportion)
-        st.sidebar.write(total_black_proportion)
+        # st.sidebar.write(average_black_proportion)
+        # st.sidebar.write(total_black_proportion)
     elif average_black_proportion > 0.2:
         st.sidebar.write(medium)
-        st.sidebar.write(average_black_proportion)
-        st.sidebar.write(total_black_proportion)
+        # st.sidebar.write(average_black_proportion)
+        # st.sidebar.write(total_black_proportion)
     else:
         st.sidebar.write(good) 
-        st.sidebar.write(average_black_proportion)
-        st.sidebar.write(total_black_proportion)
+        # st.sidebar.write(average_black_proportion)
+        # st.sidebar.write(total_black_proportion)
 
 
 # Integrating openai
