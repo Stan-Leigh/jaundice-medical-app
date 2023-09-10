@@ -200,8 +200,8 @@ if st.button("Press this button to confirm all answers"):
     st.write(df[df['users'].str.contains(user)])
 
 
-# Computer vision to detect Jaundice
-st.header("Extra precaution")
+# Computer vision to detect Jaundice on the skin
+st.header("Skin detection")
 st.write("""Jaundice may go unnoticed for a while if not carefully monitored. In this section, upload a photo of your baby so we can
          determine if there's a likelihood that the baby has Jaundice on the skin.
          """)
@@ -211,7 +211,7 @@ st.write("2. Ensure that the area of the skin you want to scan covers 80% of the
 st.write("3. If unsure of which part of the body to scan, you could do them separately (for example, face first, chest area next then legs and feet).")
 
 # code part starts
-st.write("""## Choose image input method""")
+st.write("""### Choose image input method""")
 options = ['Camera', 'Upload']
 option = st.radio('Method', options, index=1)
 
@@ -265,6 +265,127 @@ if img is not None:
         st.sidebar.write(medium)
     else:
         st.sidebar.write(good) 
+
+
+# Eye detection
+st.header("Eye detection")
+st.write("""Jaundice may also appear in the form of yellow coloring of the eyes. Upload an image of the baby's face to check.
+         """)
+st.write("""#### Instructions""")
+st.write("1. Upload a photo of your baby's face. The face/head in the must be upright and eyes must be open.")
+st.write("2. If the image is rejected, try again. Remember, the face must be upright and eyes open")
+
+st.write("""### Choose image input method""")
+options = ['Camera', 'Upload']
+option = st.radio('Method ', options, index=1)
+
+eye_images = None
+
+# function to get cropped images of the eyes
+def get_eye_images(img):
+    face_cascade = cv.CascadeClassifier('haarcascade_frontalface_default.xml')
+    eye_cascade = cv.CascadeClassifier('haarcascade_eye.xml')
+
+    # Convert the image to grayscale for face detection
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+    # Detect faces in the image
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(100, 100))
+
+    # loop over the detected faces
+    if len(faces) == 1:
+        x, y, w, h = faces[0]
+        roi_gray = gray[y:y+h, x:x+w]
+        roi_color = img[y:y+h, x:x+w]
+
+        # detects eyes of within the detected face area (roi)
+        eyes = eye_cascade.detectMultiScale(roi_gray, minSize=(30, 30))
+
+        image_objects = []
+
+        # draw a rectangle around eyes if there are two eyes
+        if len(eyes) == 2:
+            for idx, (ex,ey,ew,eh) in enumerate(eyes):
+                cv.rectangle(roi_color, (ex,ey), (ex+ew,ey+eh), (0,255,255), 2)
+                cropped_eye = roi_color[ey:ey+eh, ex:ex+ew]
+                image_objects.append(cropped_eye)
+            # st.image(img, channels='BGR', caption='Image')
+            return image_objects
+        
+        else:
+            num_eyes = len(eyes)
+            st.info("Detected " + str(num_eyes) + " eyes in the image. Try again")
+
+    else:
+        num_faces = len(faces)
+        st.info("Detected " + str(num_faces) + " faces in the image. Try again")
+
+
+if option == "Upload":
+    uploaded_file = st.file_uploader("Upload your image in .jpg format ", type=["jpg"])
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        img_array = np.array(image)
+        cv.imwrite('output.jpg', cv.cvtColor(img_array, cv.COLOR_RGB2BGR))
+
+        img = cv.imread('output.jpg')
+        eye_images = get_eye_images(img)
+        
+    else:
+        st.write("Please upload an image of the baby you want to scan.")
+elif option == 'Camera':
+    image = st.camera_input('Capture Image', key='FirstCamera', 
+                            help="""This is a basic camera that takes a photo to scan whether a baby has Jaundice. 
+                                    Don\'t forget to allow access in order for the app to be able to use the devices camera.""")
+    if image is not None:
+        bytes_data = image.getvalue()
+        img = cv.imdecode(np.frombuffer(bytes_data, np.uint8), cv.IMREAD_COLOR)
+        eye_images = get_eye_images(img)
+
+    else:
+        st.write("Please take a snapshot of the baby you want to scan.")
+
+# After getting the image, run the computer vision code to scan for Jaundice
+if eye_images is not None:
+    total_black_proportion = 0
+    for img in eye_images:
+        # Constants for finding range of skin color in YCrCb
+        min_YCrCb = np.array([0,130,100], np.uint8)
+        max_YCrCb = np.array([255,180,130], np.uint8)
+
+        # Convert image to YCrCb
+        imageYCrCb = cv.cvtColor(img, cv.COLOR_BGR2YCR_CB)
+
+        # Find region with skin tone in YCrCb image
+        skinRegion = cv.inRange(imageYCrCb, min_YCrCb, max_YCrCb)
+        # output_image = cv.bitwise_and(img, img, mask=skinRegion)
+        # st.image(output_image, channels='BGR', caption='Image1')
+
+        # Get how much parts of the image are shaded
+        # Calculate the total number of pixels in the mask
+        total_pixels = skinRegion.size
+
+        # Calculate the number of black pixels (pixels outside the color range)
+        black_pixels = np.sum(skinRegion == 0)
+
+        # Calculate the proportion of black shading and add to total
+        black_shading_proportion = black_pixels / total_pixels
+        total_black_proportion += black_shading_proportion
+
+    # get the average black shading proportion and check for jaundice
+    average_black_proportion = total_black_proportion / 2
+    if average_black_proportion > 0.4:
+        st.sidebar.write(bad)
+        st.sidebar.write(average_black_proportion)
+        st.sidebar.write(total_black_proportion)
+    elif average_black_proportion > 0.2:
+        st.sidebar.write(medium)
+        st.sidebar.write(average_black_proportion)
+        st.sidebar.write(total_black_proportion)
+    else:
+        st.sidebar.write(good) 
+        st.sidebar.write(average_black_proportion)
+        st.sidebar.write(total_black_proportion)
 
 
 # Integrating openai
