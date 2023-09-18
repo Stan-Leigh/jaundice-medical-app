@@ -23,7 +23,6 @@ Jaundice is a condition that occurs when excess amounts of bilirubin circulating
             (the layer of fat just beneath the skin), causing a yellowish appearance of the skin and the whites of the eyes, among other things.
 """)
 
-
 # Integrating a database that can store data from users
 # Create a Google Authentication connection object
 scope = ['https://spreadsheets.google.com/feeds',
@@ -63,18 +62,20 @@ def update_the_spreadsheet(spreadsheetname, dataframe):
 
 # Get username
 def get_username(x):
-    return x.split()[0]
+    return x
 
 
-columns = ['users', 'sbt', 'ut', 'sc', 'dwf', 'hpc']
+columns = ['user', 'babyName', 'dateOfBirth', 'timeOfBirth', 'weeksOfPregnancy', 'weightAtBirth', 'gender', 'bruisedAtBirth', 'motherBloodGroup',
+           'fatherBloodGroup', 'diabetes', 'exclusivelyBreastfed', 'wellBreastfed', 'otherSiblingsJaundice', 'hasFever', 
+           'bruisingScalp', 'skinColor', 'stableTemperature']
+
 df = pd.DataFrame(columns=columns)
 # Create instances of the worksheets
 sheet_names = worksheet_names()
-df1 = load_the_spreadsheet(sheet_names[0])
-df2 = load_the_spreadsheet(sheet_names[1])
+df1 = load_the_spreadsheet(sheet_names[1])
 
 # get users' usernames from the existing dataframe
-usernames = set(df1.users.apply(get_username))
+usernames = set(df1.user.apply(get_username))
 
 # Get usernames as unique identifiers
 now = datetime.now()
@@ -83,8 +84,128 @@ new = st.radio("First time visiting this app?", ("", "No", "Yes"))
 if new == "No":
     user = st.text_input("Enter your username to retrieve your information.")
     if user in usernames:
-        username = user + " " + str(now)
+        dob = df1[df1['user'] == user]['dateOfBirth'].values[0]  # getting the value from a pandas Series
         st.info("You can proceed")
+
+        # Subsequent checks
+        seen_doctor = st.radio("Have you seen a doctor", ("Yes", "No"))
+
+        # Stage 2
+        st.write("Take your baby under natural light and select all the options that you notice.")
+        eye_color = st.radio("Are his/her eyes yellow in color?", ("No", "Yes"))
+
+        st.write("Still under natural light, press down on your baby's forehead and nose for two seconds and release;")
+        skin_color = st.radio("Is the skin only slightly lighter than the normal color?", ("No", "Yes"))
+        face_color = st.radio("Is the  face yellow?", ("No", "Yes"))
+
+        st.write("Repeat the procedure for the baby's chest area")
+        chest_color = st.radio("Is the chest area yellow?", ("No", "Yes"))
+
+        st.write("Repeat the procedure for the baby's feet area")
+        feet_color = st.radio("Are the feet yellow?", ("No", "Yes"))
+
+
+        # Conditions for output recommendation
+        datetime_str = datetime.strptime(dob, '%d/%m/%Y')
+        baby_age_years = (now - datetime_str).days
+
+        # Condition 1A
+        if seen_doctor == 'No' and baby_age_years < 2 and (eye_color == "Yes" or chest_color == "Yes" or feet_color == "Yes"):
+            st.write("## RECOMMENDATION")
+            st.write("Your baby is at risk of Kernicterus and potentially cerebral palsy, let your doctor know the situation immediately.")
+            st.write("### EXPLANATION")
+            st.write("""
+                        Your baby's bilirubin level is rising faster than he/she can handle. 
+                        The bilirubin might cross the blood-brain barrier and lead to fatalities. Take the baby to the hospital to get help.\n
+
+                        These are some of the information your doctor will need, ensure you have clear answers ready:
+                        - Date of birth
+                        - Weeks of pregnancy before birth (born before 37 weeks)
+                        - Weight at birth (Less than 2.5kg)
+                        - Gender
+                        - Was your baby bruised at birth?
+                        - What is your blood group?
+                        - What is your husband's blood group?
+                        - Do you have diabetes?
+                        - Is your baby  exclusively breastfed?
+                        - Is she breastfeeding well? (8 to 12 feedings a day)
+                        - Do any of her older siblings have Jaundice at birth that lead to phototherapy or blood transfusion ?
+                        - Does your baby have a fever
+                        - Did your baby have bruising or swelling under the scalp ?
+                        - Have you noticed any changes in your baby skin color?
+            """)
+
+        # Condition 1B
+        elif seen_doctor == 'Yes' and baby_age_years < 2 and (eye_color == "Yes" or chest_color == "Yes" or feet_color == "Yes"):
+            treatment = st.radio("What treatment method did your doctor suggest?", ("Medications", "Injections", "Phototherapy", "Blood exchange"))
+            if treatment in ["Medications", "Injections"]:
+                st.write("## RECOMMENDATION")
+                st.write("""Your baby is still at risk, let the doctor know the situation and any other symptoms. 
+                                    Ask if your baby can get a phototherapy or blood transfusion instead.""")
+            elif treatment in ["Phototherapy", "Blood exchange"]:
+                st.write("## RECOMMENDATION")
+                st.write("""Insist that your baby be admitted and make sure to check for his/her jaundice regularly and inform the doctor 
+                                    regularly of the progress.""")
+            st.write("### EXPLANATION")
+            st.write("""Your baby's bilirubin level is rising faster than he/she can handle. 
+                        The bilirubin might cross the blood-brain barrier and lead to fatalities. Take the baby to the hospital to get help.\n
+
+                        These are some of the information your doctor will need, ensure you have clear answers ready:
+                        - Date of birth
+                        - Weeks of pregnancy before birth (born before 37 weeks)
+                        - Weight at birth (Less than 2.5kg)
+                        - Gender
+                        - Was your baby bruised at birth?
+                        - What is your blood group?
+                        - What is your husband's blood group?
+                        - Do you have diabetes?
+                        - Is your baby  exclusively breastfed?
+                        - Is she breastfeeding well? (8 to 12 feedings a day)
+                        - Do any of her older siblings have Jaundice at birth that lead to phototherapy or blood transfusion ?
+                        - Does your baby have a fever
+                        - Did your baby have bruising or swelling under the scalp ?
+                        - Have you noticed any changes in your baby skin color?
+            """)
+    
+        # Condition 2
+        elif seen_doctor == 'Yes' and baby_age_years > 2 and eye_color == "Yes" and chest_color == "No" and feet_color == "No":
+            treatment = st.radio("Did your doctor advise any of these?", ("Medications", "Injections", "Phototherapy", "Blood exchange", "I've not seen a doctor"))
+            if treatment in ["Medications", "Injections", "Phototherapy", "Blood exchange"]:
+                st.write("## RECOMMENDATION")
+                st.write("Make sure to follow the doctor's advice and feed your baby regularly.")
+                st.write("### EXPLANATION")
+                st.write("""Your baby's jaundice is normal. 75% of babies have this type of Jaundice, it is mild and not a cause for worry. 
+                                 Proper feeding can help your baby overcome this; if he/she isnt breast breastfeeding enough, 
+                                 consider formula feeding based on your doctor's advice.""")
+            else:
+                st.write("## RECOMMENDATION")
+                st.write("""Ensure your baby is feeding well (at least 8 times a day) and stooling properly(at least 5 times a day). 
+                                    See a doctor if your baby also seems tired, isn't feeding well and isn't sleeping enough.""")
+                st.write("### EXPLANATION")
+                st.write("""Your baby's jaundice is most likely physiological, 75% of babies have this type of Jaundice, 
+                                    it is mild and not a cause for worry. Proper feeding can help your baby overcome this; 
+                                    if he/she isnt breast breastfeeding enough, consider formular feeding based on your doctor's advice.""")
+                
+        # Condition 3
+        elif seen_doctor == 'Yes' and baby_age_years > 2 and eye_color == "No" and (chest_color == "Yes" or feet_color == "Yes"):
+            treatment = st.radio("Did your doctor advise any of these?", ("Medications", "Injections", "Phototherapy", "Blood exchange", "I've not seen a doctor"))
+            if treatment in ["Medications", "Injections", "Phototherapy", "Blood exchange"]:
+                st.write("## RECOMMENDATION")
+                st.write("Your baby's jaundice is on the rise still. Insist on your baby getting hospitalized and watched closely.")
+                st.write("### EXPLANATION")
+                st.write("""Jaundice already showing on the chest and feet indicates it is rising quickly. 
+                                    Your doctor needs to monitor the baby closely to ensure the treatment is really working.""")
+            else:
+                st.write("## RECOMMENDATION")
+                st.write("You are putting your baby at risk. Take him/her to the doctors immediately.")
+                st.write("### EXPLANATION")
+                st.write("""Jaundice already showing on the chest and feet indicates it is rising quickly. 
+                                    Your doctor needs to monitor the baby closely to ensure the treatment is really working.""")
+                
+        else:
+            st.write("## RECOMMENDATION")
+            st.write("Take your baby to the doctor. No need to panic, this is just a precautionary measure")
+
     elif len(user) > 1 and user not in usernames:
         st.info("This username is not registered. Check spellings and capitalizations.", icon="🚨")
 elif new == "Yes":
@@ -94,113 +215,141 @@ elif new == "Yes":
     elif user in usernames or len(user) == 1:
         st.info("This username already exists or the username is too short", icon="🚨")
     elif len(user) > 1:
-        username = user + " " + str(now)
         st.info("You can proceed")
+
+        baby_name = st.text_input("What is the name of the baby?")
+        dob = st.text_input("What is the baby's date of birth (DD/MM/YYYY)? Example: 24/05/2023", "24/05/2023")  # Default value as second argument 
+        tob = st.text_input("What is the baby's time of birth (HH:MM:SS)? Example: 15:56:00")
+        wop = st.text_input("Weeks of pregnancy before birth? Example: enter '37' for 37 weeks of pregnancy")
+        wab = st.text_input("Weight of the baby at birth? Example: enter '2.5' for 2.5kg")
+        gender = st.radio("Gender of the baby", ("Male", "Female"))
+        bab = st.radio("Was your baby bruised at birth", ("No", "Yes"))
+        wbg = st.radio("Blood group of the mother", ("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"))
+        hbg = st.radio("Blood group of the father", ("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"))
+        diabetes = st.radio("Does the wife have diabetes", ("No", "Yes"))
+        ebf = st.radio("Is your baby exclusively breastfed", ("No", "Yes"))
+        wbf = st.radio("Is your baby well breastfed", ("No", "Yes"))
+        osj = st.radio("Do any of her older siblings have Jaundice at birth that lead to phototherapy or blood transfusion?", ("No", "Yes"))
+        hf = st.radio("Does your baby have fever", ("No", "Yes"))
+        bs = st.radio("Did your baby have bruising or swelling under the scalp?", ("No", "Yes"))
+        sc = st.radio("Have you noticed any changes in your baby skin color?", ("No", "Yes"))
+        temp = st.radio("Has your baby's temperature been stable?", ("No", "Yes"))
+
+
+        # Next, we run the first time check here since we're sure that this is the first time they're using the app
+        st.header("Diagnosis")
+        st.subheader("1. Physical Examination")
+        sleeping_through_feedings = st.radio("Is he/she consistently sleeping through feedings?", ("No", "Yes"))
+        sleeping_19hrs = st.radio("Is he/she sleeping more than 19hrs?", ("No", "Yes"))
+        avg_wet_diapers = st.radio("Average number of wet diapers daily?", ("Less than 5", "Greater than 5"))
+        cries = st.radio("Is she crying high pitched cries?", ("No", "Yes"))
+        vomitting = st.radio("Is your baby vomiting?", ("No", "Yes"))
+        breastfed = st.radio("How many times have you breast-fed your baby in the last 24hrs?", ("0-5", "5-10", "10-15"))
+
+        # Stage 2
+        st.write("Take your baby under natural light and select all the options that you notice.")
+        eye_color = st.radio("Are his/her eyes yellow in color?", ("No", "Yes"))
+
+        st.write("Still under natural light, press down on your baby's forehead and nose for two seconds and release;")
+        skin_color = st.radio("Is the skin only slightly lighter than the normal color?", ("No", "Yes"))
+        face_color = st.radio("Is the  face yellow?", ("No", "Yes"))
+
+        st.write("Repeat the procedure for the baby's chest area")
+        chest_color = st.radio("Is the chest area yellow?", ("No", "Yes"))
+
+        st.write("Repeat the procedure for the baby's feet area")
+        feet_color = st.radio("Are the feet yellow?", ("No", "Yes"))
+
+
+        # Conditions for output recommendation
+        datetime_str = datetime.strptime(dob, '%d/%m/%Y')
+        baby_age_years = (now - datetime_str).days
+
+        # Condition 1
+        if baby_age_years < 2 and (eye_color == "Yes" or chest_color == "Yes" or feet_color == "Yes"):
+            st.write("## RECOMMENDATION")
+            st.write("See a doctor immediately. This is an emergency case.")
+            st.write("### EXPLANATION")
+            st.write("""
+                                Your baby most likely has Pathologic Jaundice, this means there is an underlying condition causing it. 
+                                Go and see a healthcare professional immediately to check the cause of the jaundice.
+                                These are some of the information your doctor will need, ensure you have clear answers ready:
+                                - Date of birth
+                                - Weeks of pregnancy before birth (born before 37 weeks)
+                                - Weight at birth (Less than 2.5kg)
+                                - Gender
+                                - Was your baby bruised at birth?
+                                - What is your blood group?
+                                - What is your husband's blood group?
+                                - Do you have diabetes?
+                                - Is your baby  exclusively breastfed?
+                                - Is she breastfeeding well? (8 to 12 feedings a day)
+                                - Do any of her older siblings have Jaundice at birth that lead to phototherapy or blood transfusion ?
+                                - Does your baby have a fever
+                                - Did your baby have bruising or swelling under the scalp ?
+                                - Have you noticed any changes in your baby skin color?
+                                - Has your baby's temperature been stable?
+
+            """)
+
+        # Condition 2
+        elif baby_age_years > 2 and eye_color == "Yes" and chest_color == "No" and feet_color == "No":
+            st.write("## RECOMMENDATION")
+            st.write("""Ensure your baby is feeding well (at least 8 times a day) and stooling properly(at least 5 times a day). 
+                                See a doctor if your baby also seems tired, isn't feeding well and isn't sleeping enough.""")
+            st.write("### EXPLANATION")
+            st.write("""Your baby's jaundice is most likely physiological, 75% of babies have this type of Jaundice, 
+                             it is mild and not a cause for worry. Proper feeding can help your baby overcome this; 
+                             if he/she isnt breast breastfeeding enough, consider formular feeding based on your doctor's advice.""")
+            
+        # Condition 3
+        elif baby_age_years > 2 and eye_color == "No" and (chest_color == "Yes" or feet_color == "Yes"):
+            st.write("## RECOMMENDATION")
+            st.write("""Your baby's jaundice is on the rise. See a doctor immediately. Your baby might require phototherapy.""")
+            st.write("### EXPLANATION")
+            st.write("""Jaundice already showing on the chest and feet indicates it is rising quickly. 
+                                Please go to your doctor and explain all the other symptoms your baby suffers.\n
+                                Here is a list of questions your doctor might ask. Have the answers in mind:
+                                - Date of birth
+                                - Weeks of pregnancy before birth (born before 37 weeks)
+                                - Weight at birth (Less than 2.5kg)
+                                - Gender
+                                - Was your baby bruised at birth?
+                                - What is your blood group?
+                                - What is your husband's blood group?
+                                - Do you have diabetes?
+                                - Is your baby  exclusively breastfed?
+                                - Is she breastfeeding well? (8 to 12 feedings a day)
+                                - Do any of her older siblings have Jaundice at birth that lead to phototherapy or blood transfusion ?
+                                - Does your baby have a fever
+                                - Did your baby have bruising or swelling under the scalp ?
+                                - Have you noticed any changes in your baby skin color?
+                                - Has your baby's temperature been stable?
+                                """)
+            
+        else:
+            st.write("## RECOMMENDATION")
+            st.write("Take your baby to the doctor. No need to panic, this is just a precautionary measure")
+            
+        # Create button to confirm write operation to the dataframe
+        if st.button("Press this button to confirm all answers"):
+            df.loc[len(df)] = [user, baby_name, dob, tob, wop, wab, gender, bab, wbg, hbg, diabetes, ebf, wbf, osj, hf, bs, sc, temp]
+
+            # combine old records with new ones
+            df = pd.concat([df1, df], ignore_index=True)
+
+            # update the googlesheet
+            update_the_spreadsheet("InitialProfile", df)
+
 else:
     pass
 
-# Streamlit code continues
-st.header("Symptoms")
-st.subheader("1. Skin Blanched test")
-st.write("""
-        Press gently on the baby's forehead or nose to blanch the skin (make it pale). 
-        Release the pressure, and observe if the skin returns to its yellow color.
-""")
-sbt = st.radio("Does the skin return to its original color in less than two seconds?", ("Less than two seconds", "More than two seconds"))
 
-st.subheader("2. Urine test")
-st.write("""
-        Try to compare the current diaper with previous ones to see if there is a significant change in urine color. 
-        This can help you identify any sudden darkening of the urine.
-         
-        If you notice that your baby's urine is dark yellow or orange, 
-        it could be an indication of increased bilirubin levels in the blood.
-""")
-urine_intensity = st.slider('What is the intensity of the color of the urine?', 0, 100, 0, 20)
-hex_values = ['#fff064', '#ffde1a', '#ffce00', '#ffa700', '#ff8d00', '#ff7400']
-color_hex = int(urine_intensity / 20)
-color = st.color_picker('Color intensity', hex_values[color_hex])
-ut = "No" if color_hex < 3 else "Yes"
-
-st.subheader("3. Stool color")
-st.write("""
-        Observe your baby's stool color when they are healthy and not experiencing jaundice. 
-        Note the typical color of their stools during this time.
-         
-        If you notice a significant change in stool color, 
-        where the stool becomes considerably paler or takes on a clay-like appearance, it may be an indicator of jaundice.
-""")
-sc = st.radio("Is there significant change in stool color (Paler or clay-like appearance)?", ("No", "Yes"))
-
-st.subheader("4. Difficulty in waking and feeding")
-st.write("""
-        Observe your baby and watch for signs of lethargy i.e. extreme tiredness, sluggishness, and lack of energy or motivation,
-        drowsiness, and a reduced level of consciousness. The baby may appear weak, and less responsive than usual. 
-         
-        Feeding can become challenging because the baby lacks the energy and alertness to suckle or drink properly.
-""")
-dwf = st.radio("Are there signs that indicate that the baby has difficulty waking and feeding?", ("No", "Yes"))
-
-st.subheader("5. High pitched crying")
-st.write("""
-        Observe your baby and listen for changes in their crying behaviour. Remember that babies cry for various reasons, 
-        and it's a normal part of their communication. They might cry due to hunger, discomfort, needing a diaper change, 
-        fatigue, or feeling overwhelmed.
-         
-        Pay attention and see if you can detect any change in their behaviour or if the cries are high pitched.
-""")
-hpc = st.radio("Are there changes in the crying behaviour or is the baby's cries high pitched?", ("No", "Yes"))
-
-
-# Sidebar menu
-# Show the registered usernames
-st.sidebar.selectbox('Registered Usernames', usernames)
-
-
-st.sidebar.write("## RECOMMENDATION")
+# Computer vision to detect Jaundice on the skin
 good = "All good. No signs of jaundice."
 medium = "Watch your baby for more symptoms. No serious issue yet."
 bad = "See a medical professional immediately! Your baby might be suffering from jaundice."
 
-# Logic
-def recommendation(sbt, ut, sc, dwf, hpc):
-    strike = 0
-
-    if sbt == "More than two seconds":
-        strike += 1
-    if ut == "Yes":
-        strike += 1 
-    if sc == "Yes":
-        strike += 1 
-    if dwf == "Yes":
-        strike += 1  
-    if hpc == "Yes":
-        strike += 1  
-
-    if strike > 2:
-        st.sidebar.write(bad)
-    elif strike > 0:
-        st.sidebar.write(medium)
-    else:
-        st.sidebar.write(good) 
-
-
-# Create button to confirm write operation to the dataframe
-if st.button("Press this button to confirm all answers"):
-    df.loc[len(df)] = [username, sbt, ut, sc, dwf, hpc]
-
-    # combine old records with new ones
-    df = pd.concat([df1, df], ignore_index=True)
-
-    # update the googlesheet
-    update_the_spreadsheet("JaundiceReport", df)
-    
-    # Show recommendation on the sidebar
-    recommendation(sbt, ut, sc, dwf, hpc)
-    st.write(df[df['users'].str.contains(user)])
-
-
-# Computer vision to detect Jaundice on the skin
 st.header("Skin detection")
 st.write("""Jaundice may go unnoticed for a while if not carefully monitored. In this section, upload a photo of your baby so we can
          determine if there's a likelihood that the baby has Jaundice on the skin.
@@ -237,6 +386,7 @@ elif option == 'Camera':
     else:
         st.write("Please take a snapshot of the baby you want to scan.")
 
+st.sidebar.write("# RECOMMENDATION")
 # After getting the image, run the computer vision code to scan for Jaundice
 if img is not None:
     # Constants for finding range of skin color in YCrCb
@@ -386,6 +536,7 @@ if eye_images is not None:
         st.sidebar.write(good) 
         # st.sidebar.write(average_black_proportion)
         # st.sidebar.write(total_black_proportion)
+
 
 
 # Integrating openai
