@@ -28,17 +28,22 @@ Jaundice is a condition that occurs when excess amounts of bilirubin circulating
 scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 
-credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
-client = Client(scope=scope, creds=credentials)
-spreadsheetname = "Database"
-spread = Spread(spreadsheetname, client=client)
+# Catch that error that occurs when connecting to the Google sheets API sometimes.
+try:
+    credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+    client = Client(scope=scope, creds=credentials)
+    spreadsheetname = "Database"
+    spread = Spread(spreadsheetname, client=client)
 
-## Check that the connection worked
-# st.write(spread.url)
+    ## Check that the connection worked
+    # st.write(spread.url)
 
-# Call our spreadsheet
-sh = client.open(spreadsheetname)
-worksheet_list = sh.worksheets()
+    # Call our spreadsheet
+    sh = client.open(spreadsheetname)
+    worksheet_list = sh.worksheets()
+
+except Exception as error:
+    st.warning("Reload the website. A temporary error has occurred.")
 
 # Functions
 # @st.cache()
