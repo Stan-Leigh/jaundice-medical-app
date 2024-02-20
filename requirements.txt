@@ -1,8 +1,8 @@
-streamlit==1.13.0
-openai==0.27.8
-pandas==1.2.4
-gspread-pandas==3.2.2
+streamlit==1.27.0
+openai==0.28.0
+pandas==2.2.0
+gspread-pandas==3.2.3
 google-oauth2-tool==0.0.3
-Pillow==8.2.0
-numpy==1.23.5
-opencv-python-headless==4.7.0.72
+Pillow==9.4.0
+numpy==1.24.3
+opencv-python-headless==4.8.0.76
