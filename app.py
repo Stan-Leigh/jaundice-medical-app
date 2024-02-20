@@ -576,7 +576,8 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from datetime import datetime
-from gspread_pandas import Spread, Client
+from gspread_pandas.client import Client
+from gspread_pandas import Spread
 from google.oauth2 import service_account
 
 # Page title
