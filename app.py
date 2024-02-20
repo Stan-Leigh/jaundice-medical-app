@@ -35,8 +35,8 @@ try:
     spreadsheetname = "Database"
     spread = Spread(spreadsheetname, client=client)
 
-    ## Check that the connection worked
-    # st.write(spread.url)
+    # Check that the connection worked
+    st.write(spread.url)
 
     # Call our spreadsheet
     sh = client.open(spreadsheetname)
