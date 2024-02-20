@@ -1,8 +1,13 @@
 streamlit==1.27.0
 openai==0.28.0
 pandas==2.2.0
+gspread==5.11.2
 gspread-pandas==3.2.3
 google-oauth2-tool==0.0.3
 Pillow==9.4.0
 numpy==1.24.3
 opencv-python-headless==4.8.0.76
+gspread==5.11.2
+decorator==5.1.1
+google-auth==2.23.0
+google-auth-oauthlib==1.1.0
